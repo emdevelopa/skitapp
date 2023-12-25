@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Recording</title>
+</head>
+<style>
+ video{
+    background: #000;
+    border-radius: 10px;
+    height: 80vh;
+ }
+
+    #startButton {
+        background-color: rgb(54, 179, 183);
+        height: 8em;
+        width: 8em;
+        border-radius: 50%;
+    }
+</style>
+
+<body>
+    <div style="max-width: 100%; overflow: hidden;">
+        <video id="video" width="100%" autoplay></video>
+    </div>
+
+    <button id="startButton">Start</button>
+    <button id="stopButton" disabled>Stop </button>
+
+    <script>
+        let mediaRecorder;
+        let recordedChunks = [];
+
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const video = document.getElementById('video');
+
+        startButton.addEventListener('click', startRecording);
+        stopButton.addEventListener('click', stopRecording);
+
+        function startRecording() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function (stream) {
+                    video.srcObject = stream;
+
+                    // Create a MediaRecorder instance
+                    mediaRecorder = new MediaRecorder(stream);
+
+                    // Event handlers for the MediaRecorder
+                    mediaRecorder.ondataavailable = function (event) {
+                        if (event.data.size > 0) {
+                            recordedChunks.push(event.data);
+                        }
+                    };
+
+                    mediaRecorder.onstop = function () {
+                        // Combine recorded chunks into a Blob
+                        const blob = new Blob(recordedChunks, { type: 'video/mp4' });
+
+                        // Create a download link for the recorded video
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'recorded-video.webm';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+
+                        // Clear recordedChunks array
+                        recordedChunks = [];
+                    };
+
+                    // Start recording
+                    mediaRecorder.start();
+
+                    // Disable start button and enable stop button
+                    startButton.disabled = true;
+                    stopButton.disabled = false;
+                })
+                .catch(function (error) {
+                    console.error('Error accessing the camera:', error);
+                });
+        }
+
+        function stopRecording() {
+            // Stop recording
+            mediaRecorder.stop();
+
+            // Disable stop button and enable start button
+            stopButton.disabled = true;
+            startButton.disabled = false;
+
+            // Stop the video stream and revoke the object URL
+            video.srcObject.getTracks().forEach(track => track.stop());
+            video.srcObject = null;
+        }
+    </script>
+
+</body>
+
+</html>
